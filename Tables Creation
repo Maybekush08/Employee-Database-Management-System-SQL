@@ -1,0 +1,249 @@
+-- (1) creating the employee information table
+CREATE table if not exists Employee_Information(
+EmployeeID BIGINT NOT NULL, 
+PRIMARY KEY (EmployeeID),
+First_Name VARCHAR (255) NOT NULL,
+Last_Name VARCHAR (255) NOT NULL,
+DOB DATE NOT NULL,
+Address VARCHAR (255) NOT NULL,
+City VARCHAR (255) NOT NULL,
+Zipcode INT NOT NULL,
+Gender VARCHAR(255) NOT NULL,
+Mobile VARCHAR(255) NOT NULL UNIQUE,
+SSN BIGINT NOT NULL UNIQUE
+);
+
+-- (2) Schema for Performance Table
+CREATE table if not exists PerformanceMetrics(
+EmployeeID BIGINT NOT NULL, 
+PerformanceID BIGINT NOT NULL,
+Cycle_Start_Date Date NOT NULL,
+Cycle_End_Date Date NOT NULL,
+Days_in_cycle int NOT NULL,
+Sales_Revenue INT,
+Hours_Worked INT,
+Project_Completion_Rate DECIMAL(3, 1) CHECK (Project_Completion_Rate >= 0 AND Project_Completion_Rate <= 1),
+Milestones VARCHAR(255),
+PRIMARY KEY (PerformanceID),
+FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- (3) Schema for Review Table
+CREATE TABLE Review (
+    ReviewID BIGINT NOT NULL AUTO_INCREMENT,
+    EmployeeID BIGINT NOT NULL,
+    ReviewerID BIGINT NOT NULL,
+    ReviewDate DATE NOT NULL,
+    ReviewPeriod VARCHAR(255),
+    PerformanceRatings DECIMAL(5,2),
+    GoalsTargets VARCHAR(255),
+    Strengths TEXT,
+    AreasForImprovement TEXT,
+    ActionableSteps TEXT,
+    TrainingDevelopmentNeeds TEXT,
+    CareerAspirations TEXT,
+    OverallAssessment VARCHAR(255),
+    PRIMARY KEY (ReviewID),
+    FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID),
+    FOREIGN KEY (ReviewerID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- (4) Table to track training activities of employees during their probation period
+CREATE TABLE IF NOT EXISTS ProbationEmployeesTraining (
+    TrainingID INT PRIMARY KEY,
+    EmployeeID BIGINT,
+    TrainingType VARCHAR(100),
+    TrainingDate DATE,
+    CompletionStatus VARCHAR(20),
+    FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- (5) Table to store department information
+CREATE TABLE IF NOT EXISTS Department (
+    DepartmentID INT PRIMARY KEY,
+    DepartmentName VARCHAR(100)
+);
+
+
+-- (6) Table to track attendance of employees
+CREATE TABLE IF NOT EXISTS Attendance (
+    AttendanceID INT PRIMARY KEY,
+    EmployeeID BIGINT,
+    AttendanceDate DATE,
+    StartTime TIME,
+    EndTime TIME,
+    FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- (7) Table to log historical events or changes
+CREATE TABLE IF NOT EXISTS HistoryLog (
+    LogID INT PRIMARY KEY,
+    LogType VARCHAR(100),
+    LogDate DATETIME,
+    LogDetails TEXT,
+    EmployeeID BIGINT,
+    FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- (8) Table to track Pay Grades
+CREATE TABLE IF NOT EXISTS Pay_Grades(
+PayGradeID VARCHAR(100) PRIMARY KEY ,
+GradeName VARCHAR(100),
+MinSalary DECIMAL(15,2),
+MaxSalary DECIMAL(15,2));
+
+
+-- (9) Table to track Benefits provided by the company
+ CREATE TABLE IF NOT EXISTS Benefits(
+BenefitID VARCHAR(100) PRIMARY KEY,
+PayGradeID VARCHAR(100),
+BenefitType VARCHAR(100),
+BenefitAmount DECIMAL(15,2),
+FOREIGN KEY (PayGradeID) REFERENCES Pay_Grades(PayGradeID) 
+);
+
+
+-- (10) Table to track Deductions provided by the company
+CREATE TABLE IF NOT EXISTS Deductions(
+    DeductionID VARCHAR(100) PRIMARY KEY,
+    DeductionType VARCHAR(100),
+    DeductionRate DECIMAL(15,2)
+);
+
+
+-- (11) Table to track Salaries and related components
+CREATE TABLE IF NOT EXISTS Salaries(
+EmployeeID BIGINT,
+SalaryID VARCHAR(100) PRIMARY KEY NOT NULL,
+PayGradeID VARCHAR(100),
+BaseSalary DECIMAL(15,2),
+Bonus DECIMAL(15,2),
+DeductionRate DECIMAL(15.2),
+DeductionAmount DECIMAL(15,2),
+BenefitAmount DECIMAL(15,2),
+TotalSalary DECIMAL (15,2),
+FOREIGN KEY (PayGradeID) REFERENCES Pay_Grades(PayGradeID),
+FOREIGN KEY (EmployeeID) REFERENCES EMployee_Information(EmployeeID) 
+);
+
+
+-- (12) Table to track Positions in the company
+CREATE TABLE Positions (
+PositionID VARCHAR(100) PRIMARY KEY NOT NULL, 
+PositionTitle VARCHAR(100),
+Responsibilities TEXT, 
+Qualification TEXT, 
+DepartmentID INT,
+PayGradeID VARCHAR(100),
+FOREIGN KEY (DepartmentID) REFERENCES department(DepartmentID), 
+FOREIGN KEY (PayGradeID) REFERENCES Pay_Grades(PayGradeID)
+);
+
+
+
+-- (13) Table to track Leave Requests of Employees
+CREATE TABLE Leaves_Request (
+LeaveRequestID VARCHAR(100) PRIMARY KEY NOT NULL,
+LeaveType VARCHAR(100), 
+StartDate DATE, 
+EndDate DATE,
+Number_Of_Leaves_Requested INT,
+ApprovalStatus VARCHAR(20),
+EmployeeID BIGINT,
+FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+
+CREATE INDEX idx_Number_Of_Leaves_Requested ON Leaves_Request(Number_Of_Leaves_Requested);
+
+-- (14) Table to track Leave Transactions of Employees in the company
+CREATE TABLE Leaves_Basket (
+Leaves_Accumulated INT, 
+Leaves_Left INT, 
+LeaveRequestID VARCHAR(100),
+EmployeeID BIGINT,
+Number_Of_Leaves_Requested INT,
+FOREIGN KEY (LeaveRequestID) REFERENCES Leaves_Request(LeaveRequestID), 
+FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID), 
+FOREIGN KEY (Number_Of_Leaves_Requested) REFERENCES Leaves_Request(Number_Of_Leaves_Requested)
+);
+
+
+
+CREATE INDEX idx_TotalSalary ON Salaries(TotalSalary);
+
+-- (15) Table to track Employee Payroll in the company
+CREATE TABLE Payroll (
+PayrollId VARCHAR(100),
+EmployeeID BIGINT,
+BaseSalary DECIMAL(15,2), 
+Deductions DECIMAL (15,2), 
+Benefits DECIMAL	(15,2), 
+PayPeriodStartDate DATE, 
+PayPeriodEndDate DATE,
+TotalSalary DECIMAL(15,2),
+FOREIGN KEY (EmployeeID) REFERENCES Employee_Information(EmployeeID)
+);
+
+
+-- Employee_Information: Company Email
+ALTER TABLE Employee_Information
+ADD COLUMN Company_Email VARCHAR (255);
+SET SQL_SAFE_UPDATES = 0;
+UPDATE Employee_Information SET Company_Email = CONCAT(LOWER(LEFT(First_Name, 1)), 'x', LOWER(LEFT(Last_Name, 1)), RIGHT(EmployeeID, 3), '@dbmscorp.com');
+
+-- Employee_Information: Personal Email 
+ALTER TABLE Employee_Information ADD COLUMN Personal_Email VARCHAR (255);
+UPDATE Employee_Information
+SET Personal_Email = CONCAT(LOWER(First_Name), '.', LOWER(Last_Name), '@gmail.com');
+
+
+-- Performance Metrics: Punctuality
+ALTER TABLE performancemetrics
+ADD COLUMN Punctuality Decimal(3,2);
+UPDATE performancemetrics SET punctuality = Hours_Worked/(Days_in_cycle*8);
+
+-- Performance Metrics: Efficiency
+ALTER TABLE performancemetrics
+ADD COLUMN efficiency Decimal(4,2);
+UPDATE performancemetrics SET efficiency = Sales_Revenue/Hours_Worked;
+
+-- Performance Metrics: Norm_Efficiency 
+ALTER TABLE performancemetrics
+ADD COLUMN norm_efficiency Decimal(3,2);
+
+-- Performance Metrics: JOINING TABLE TO CREATE COLUMN
+UPDATE performancemetrics as pm
+JOIN (SELECT MAX(efficiency) AS max_efficiency FROM performancemetrics) AS max_eff
+SET pm.norm_efficiency = pm.efficiency / max_eff.max_efficiency;
+
+-- Performance Metrics: performance 
+ALTER TABLE performancemetrics
+ADD COLUMN performance Decimal(3,2);
+UPDATE performancemetrics SET performance=(punctuality+norm_efficiency+project_completion_rate)/3;
+
+-- Payroll: BaseSalary
+UPDATE Payroll
+JOIN Salaries ON Payroll.EmployeeID = Salaries.EmployeeID
+SET Payroll.BaseSalary = Salaries.BaseSalary;
+
+-- Payroll: TotalSalary
+UPDATE Payroll
+JOIN Salaries ON Payroll.EmployeeID = Salaries.EmployeeID
+SET Payroll.TotalSalary = Salaries.TotalSalary;
+
+-- Payroll: Deductions
+UPDATE Payroll
+JOIN Salaries ON Payroll.EmployeeID = Salaries.EmployeeID
+SET Payroll.Deductions = Salaries.DeductionAmount;
+
+-- Payroll: Benefits
+UPDATE Payroll
+JOIN Salaries ON Payroll.EmployeeID = Salaries.EmployeeID
+SET Payroll.Benefits = Salaries.BenefitAmount;
