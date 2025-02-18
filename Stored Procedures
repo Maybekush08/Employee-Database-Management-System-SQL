@@ -1,0 +1,249 @@
+-- Stored Procedure #1 - Add a new employee
+DELIMITER //
+
+CREATE PROCEDURE Add_New_Employee (
+  IN p_Employee_ID BIGINT,	
+  IN p_FirstName VARCHAR(255),
+  IN p_LastName VARCHAR(255),
+  IN p_DOB DATE,
+  IN p_Address VARCHAR(255),
+  IN p_City VARCHAR(255),
+  IN p_Zipcode INT,
+  IN p_Gender VARCHAR(255),
+  IN p_Mobile VARCHAR(255),
+  IN p_SSN BIGINT
+)
+BEGIN
+  DECLARE v_Company_Email VARCHAR(255);
+  DECLARE v_Personal_Email VARCHAR(255);
+  
+  SET v_Company_Email = CONCAT(LOWER(LEFT(p_FirstName, 1)), 'x', LOWER(LEFT(p_LastName, 1)), RIGHT(p_Employee_ID, 3), '@dbmscorp.com');
+  SET v_Personal_Email = CONCAT(LOWER(p_FirstName), '.', LOWER(p_LastName), '@gmail.com');
+  
+  INSERT INTO Employee_Information (
+    EmployeeID,
+    First_Name,
+    Last_Name,
+    DOB,
+    Address,
+    City,
+    Zipcode,
+    Gender,
+    Mobile,
+    SSN,
+    Company_Email,
+    Personal_Email
+  )
+  VALUES (
+    p_Employee_ID,
+    p_FirstName,
+    p_LastName,
+    p_DOB,
+    p_Address,
+    p_City,
+    p_Zipcode,
+    p_Gender,
+    p_Mobile,
+    p_SSN,
+    v_Company_Email,
+    v_Personal_Email
+  );
+
+END //
+DELIMITER ;
+
+
+
+-- Stored Procedure #2 - Update Employee Information
+DELIMITER //
+
+CREATE PROCEDURE Update_Employee_Parameter (
+  IN p_Employee_ID BIGINT,
+  IN p_Parameter VARCHAR(255),
+  IN p_Value VARCHAR(255)
+)
+BEGIN
+  DECLARE v_ColumnName VARCHAR(255);
+  
+  CASE p_Parameter
+    WHEN 'First_Name' THEN SET v_ColumnName = 'First_Name';
+    WHEN 'Last_Name' THEN SET v_ColumnName = 'Last_Name';
+    WHEN 'DOB' THEN SET v_ColumnName = 'DOB';
+    WHEN 'Address' THEN SET v_ColumnName = 'Address';
+    WHEN 'City' THEN SET v_ColumnName = 'City';
+    WHEN 'Zipcode' THEN SET v_ColumnName = 'Zipcode';
+    WHEN 'Gender' THEN SET v_ColumnName = 'Gender';
+    WHEN 'Mobile' THEN SET v_ColumnName = 'Mobile';
+    WHEN 'SSN' THEN SET v_ColumnName = 'SSN';
+    WHEN 'Company_Email' THEN SET v_ColumnName = 'Company_Email';
+    WHEN 'Personal_Email' THEN SET v_ColumnName = 'Personal_Email';
+    ELSE SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid parameter provided';
+  END CASE;
+
+  SET @sql = CONCAT('UPDATE Employee_Information SET ', v_ColumnName, ' = ? WHERE EmployeeID = ?');
+  PREPARE stmt FROM @sql;
+  SET @p_Value = p_Value;
+  SET @p_Employee_ID = p_Employee_ID;
+  EXECUTE stmt USING @p_Value, @p_Employee_ID;
+  DEALLOCATE PREPARE stmt;
+  
+END //
+
+DELIMITER ;
+
+
+
+-- Stored Procedure #3 - Adding Records to Performance Metrics
+DELIMITER //
+
+CREATE PROCEDURE Add_Performance_Metrics (
+  IN p_EmployeeID BIGINT, 
+  IN p_PerformanceID BIGINT,
+  IN p_Cycle_Start_Date DATE,
+  IN p_Cycle_End_Date DATE,
+  IN p_Days_in_cycle INT,
+  IN p_Sales_Revenue INT,
+  IN p_Hours_Worked INT,
+  IN p_Project_Completion_Rate DECIMAL(3, 1),
+  IN p_Milestones VARCHAR(255)
+)
+BEGIN
+  -- Declare variables
+  DECLARE v_Punctuality DECIMAL(5, 2);
+  DECLARE v_Efficiency DECIMAL(5, 2);
+
+  SET v_Punctuality = p_Hours_Worked / (p_Days_in_cycle * 8);
+  SET v_Efficiency = p_Sales_Revenue / p_Hours_Worked;
+  
+  INSERT INTO PerformanceMetrics (
+    EmployeeID,
+    PerformanceID,
+    Cycle_Start_Date,
+    Cycle_End_Date,
+    Days_in_cycle,
+    Sales_Revenue,
+    Hours_Worked,
+    Project_Completion_Rate,
+    Milestones,
+    Punctuality,
+    Efficiency
+  )
+  VALUES (
+    p_EmployeeID,
+    p_PerformanceID,
+    p_Cycle_Start_Date,
+    p_Cycle_End_Date,
+    p_Days_in_cycle,
+    p_Sales_Revenue,
+    p_Hours_Worked,
+    p_Project_Completion_Rate,
+    p_Milestones,
+    v_Punctuality,
+    v_Efficiency
+  );
+
+  UPDATE PerformanceMetrics AS pm
+  JOIN (SELECT MAX(efficiency) AS max_efficiency FROM PerformanceMetrics) AS max_eff
+  SET pm.norm_efficiency = pm.efficiency / max_eff.max_efficiency;
+  
+END //
+
+DELIMITER ;
+
+
+
+-- Stored Procedure #4 - Calculate Employee Salary
+DELIMITER //
+
+CREATE PROCEDURE Calculate_Employee_Salary (
+  IN p_Employee_ID BIGINT
+)
+BEGIN
+  DECLARE v_BaseSalary DECIMAL(10,2);
+  DECLARE v_Bonus DECIMAL(10,2);
+  DECLARE v_BenefitAmount DECIMAL(10,2);
+  DECLARE v_DeductionRate DECIMAL(15,2);
+  DECLARE v_Deduction_Amount DECIMAL(10,2);
+  DECLARE v_Total_Salary DECIMAL(10,2);
+  
+  -- Retrieve BaseSalary, Bonus, and BenefitAmount from Salaries table
+  SELECT BaseSalary, Bonus, BenefitAmount INTO v_BaseSalary, v_Bonus, v_BenefitAmount
+  FROM Salaries
+  WHERE EmployeeID = p_Employee_ID;
+  
+  -- Retrieve DeductionRate from Deductions table
+  SELECT DeductionRate INTO v_DeductionRate
+  FROM Deductions
+  WHERE DeductionID = (SELECT DeductionID FROM Salaries WHERE EmployeeID = p_Employee_ID);
+  
+  -- Calculate Deduction_Amount
+  SET v_Deduction_Amount = (v_DeductionRate/100) * v_BaseSalary;
+  
+  -- Calculate Total_Salary
+  SET v_Total_Salary = v_BaseSalary - v_Deduction_Amount + v_Bonus + v_BenefitAmount;
+  
+  -- Display the calculated salary
+  SELECT 
+    v_BaseSalary AS Base_Salary,
+    v_Bonus AS Bonus,
+    v_BenefitAmount AS Benefit_Amount,
+    v_DeductionRate AS Deduction_Rate,
+    v_Deduction_Amount AS Deduction_Amount,
+    v_Total_Salary AS Total_Salary;
+    
+END //
+
+DELIMITER ;
+
+
+-- Stored Procedure #5 - Adding Records to Review
+DELIMITER //
+
+CREATE PROCEDURE Add_Review (
+  IN p_ReviewID BIGINT,
+  IN p_EmployeeID BIGINT,
+  IN p_ReviewerID BIGINT,
+  IN p_ReviewDate DATE,
+  IN p_ReviewPeriod VARCHAR(255),
+  IN p_PerformanceRatings DECIMAL(5, 2),
+  IN p_GoalsTargets VARCHAR(255),
+  IN p_Strengths VARCHAR(255),
+  IN p_AreasForImprovement VARCHAR(255),
+  IN p_ActionableSteps VARCHAR(255),
+  IN p_TrainingDevelopmentNeeds VARCHAR(255),
+  IN p_CareerAspirations VARCHAR(255),
+  IN p_OverallAssessment VARCHAR(255)
+)
+BEGIN
+  INSERT INTO Review (
+    ReviewID,
+    EmployeeID,
+    ReviewerID,
+    ReviewDate,
+    ReviewPeriod,
+    PerformanceRatings,
+    GoalsTargets,
+    Strengths,
+    AreasForImprovement,
+    ActionableSteps,
+    TrainingDevelopmentNeeds,
+    CareerAspirations,
+    OverallAssessment
+  )
+  VALUES (
+    p_ReviewID,
+    p_EmployeeID,
+    p_ReviewerID,
+    p_ReviewDate,
+    p_ReviewPeriod,
+    p_PerformanceRatings,
+    p_GoalsTargets,
+    p_Strengths,
+    p_AreasForImprovement,
+    p_ActionableSteps,
+    p_TrainingDevelopmentNeeds,
+    p_CareerAspirations,
+    p_OverallAssessment
+  );
+END //
+DELIMITER ;
