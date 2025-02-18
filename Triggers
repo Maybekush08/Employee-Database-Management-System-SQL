@@ -1,0 +1,115 @@
+-- Trigger #1 - Update Log After Employee Is Added
+DELIMITER //
+
+CREATE TRIGGER trg_After_Insert_Employee
+AFTER INSERT ON Employee_Information
+FOR EACH ROW
+BEGIN
+  INSERT INTO HistoryLog_EmployeeInformation (LogType, LogDate, LogDetails, EmployeeID)
+  VALUES ('Employee Added', NOW(), CONCAT('Employee ', NEW.EmployeeID, ' added to Employee_Information table'), NEW.EmployeeID);
+END //
+DELIMITER ;
+
+-- Call Statements
+CALL Add_New_Employee (6320001600, 'Naveen', 'Jindal', '1985-10-22', '7575, Frankford Road', 'Dallas', 75252, 'M','+19729463967', 585468123);
+Select * from Employee_Information;
+SELECT * FROM HistoryLog_EmployeeInformation;
+
+
+
+-- Trigger #2 - Update Log After Update in Employee Parameter
+DELIMITER //
+CREATE TRIGGER trg_After_Update_Employee_Parameter
+AFTER UPDATE ON Employee_Information
+FOR EACH ROW
+BEGIN
+  -- Check if the stored procedure Update_Employee_Parameter was called
+  IF OLD.First_Name != NEW.First_Name OR
+     OLD.Last_Name != NEW.Last_Name OR
+     OLD.DOB != NEW.DOB OR
+     OLD.Address != NEW.Address OR
+     OLD.City != NEW.City OR
+     OLD.Zipcode != NEW.Zipcode OR
+     OLD.Gender != NEW.Gender OR
+     OLD.Mobile != NEW.Mobile OR
+     OLD.SSN != NEW.SSN OR
+     OLD.Company_Email != NEW.Company_Email OR
+     OLD.Personal_Email != NEW.Personal_Email THEN
+    
+    -- Insert into the history log table
+    INSERT INTO HistoryLog_EmployeeInformation (LogType, LogDate, LogDetails, EmployeeID)
+    VALUES ('Employee Parameter Updated', NOW(), CONCAT('Employee ', NEW.EmployeeID, ' parameter updated'), NEW.EmployeeID);
+  END IF;
+END //
+DELIMITER ;
+
+-- Call Statements
+CALL Update_Employee_Parameter(6320001599, 'City', 'Austin');
+CALL Update_Employee_Parameter(6320001599, 'Zipcode', '98467');
+Select * from Employee_Information;
+SELECT * FROM HistoryLog_EmployeeInformation;
+
+
+
+-- Trigger #3 - Update Log for every Performance Metric Added 
+DELIMITER //
+
+CREATE TRIGGER trg_After_Insert_PerformanceMetrics
+AFTER INSERT ON PerformanceMetrics
+FOR EACH ROW
+BEGIN
+  INSERT INTO HistoryLog_EmployeeInformation (LogType, LogDate, LogDetails, EmployeeID)
+  VALUES ('Performance Metrics Added', NOW(), CONCAT('Performance metrics added for Employee ', NEW.EmployeeID), NEW.EmployeeID);
+END //
+
+DELIMITER ;
+
+-- Call Statements
+CALL Add_Performance_Metrics(6320001598,1599542198,'2020-01-01','2020-03-31',90,18826,657,0.8,'Track key performance indicators (KPIs)');
+Select * from performancemetrics;
+SELECT * FROM HistoryLog_EmployeeInformation;
+
+
+
+
+-- Trigger #4 - Update Log everytime a leave is approved
+DELIMITER //
+
+CREATE TRIGGER trg_Log_Approved_Leaves
+AFTER UPDATE ON Leaves_Request
+FOR EACH ROW
+BEGIN
+    IF NEW.ApprovalStatus = 'Approved' THEN
+        -- Insert into Employee_Leaves_Log
+        INSERT INTO Employee_Leaves_Log (LeaveRequestID, EmployeeID, StartDate, EndDate)
+        VALUES (NEW.LeaveRequestID, NEW.EmployeeID, NEW.StartDate, DATE_ADD(NEW.StartDate, INTERVAL NEW.Number_Of_Leaves_Requested - 1 DAY));
+    END IF;
+END //
+DELIMITER ;
+
+-- Call Statements
+-- INSERT INTO Leaves_Request VALUES (1520789,6320001520,'Maternity Extended Thrice','2021-12-12',8,'Pending');
+-- UPDATE Leaves_Request SET ApprovalStatus = 'Approved' WHERE LeaveRequestID = '1520789';
+SELECT * FROM Leaves_Request;
+SELECT * FROM Employee_Leaves_Log;
+
+
+
+
+-- Trigger #5 - Update Log everytime Review is Added
+DELIMITER //
+
+CREATE TRIGGER trg_After_Insert_Review
+AFTER INSERT ON Review
+FOR EACH ROW
+BEGIN
+  INSERT INTO HistoryLog_EmployeeInformation (LogType, LogDate, LogDetails, EmployeeID)
+  VALUES ('Review Added', NOW(), CONCAT('Review added for Employee ', NEW.EmployeeID), NEW.EmployeeID);
+END //
+
+DELIMITER ;
+
+--Call Statements
+CALL Add_Review(638, 6320001598, 6320001867, '2022-12-31','Annual Review',4.5,'Exceeds Expectations','Leadership Skills','Time Management','Set clear and achievable performance goals with the employee.','Leadership skills development','Obtain a leadership role within the company.','Exceeds expectations in all key performance areas.');
+select * from review;
+SELECT * FROM HistoryLog_EmployeeInformation;
